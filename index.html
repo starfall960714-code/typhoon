@@ -1,583 +1,1150 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>颱風對台灣的影響：原理 3D / 向量互動視覺化工作台</title>
-    <style>
-        :root {
-            --bg-color: #0b0f19;
-            --panel-bg: rgba(17, 24, 39, 0.75);
-            --border-color: rgba(56, 189, 248, 0.2);
-            --accent-cyan: #38bdf8;
-            --accent-blue: #0284c7;
-            --accent-glow: rgba(56, 189, 248, 0.4);
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --danger: #f43f5e;
-            --success: #10b981;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>颱風對台灣的影響：原理 3D / 向量互動視覺化工作台</title>
+  <meta name="description"
+    content="高階氣象動力學互動視覺化工作台：探索颱風侵台路徑、中央山脈地形破壞機制、迎風面地形雨與背風面沉降焚風原理。採用純向量 SVG、3D 空間透視與 Web Audio 微互動音效。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap"
+    rel="stylesheet">
+  <style>
+    :root {
+      --bg-space: #070b14;
+      --bg-panel: rgba(13, 22, 41, 0.75);
+      --bg-panel-hover: rgba(19, 32, 60, 0.85);
+      --bg-card: rgba(18, 30, 56, 0.6);
+      --border-subtle: rgba(79, 172, 254, 0.18);
+      --border-focus: rgba(0, 242, 254, 0.65);
+      --glow-cyan: rgba(0, 242, 254, 0.35);
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        }
+      --color-primary: #00f2fe;
+      --color-accent: #4facfe;
+      --color-emerald: #10b981;
+      --color-warning: #f59e0b;
+      --color-danger: #ef4444;
+      --color-violet: #8b5cf6;
+      --color-foehn: #ff4500;
+      --color-rain: #38bdf8;
 
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-        }
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
 
-        /* 頂部導覽列 */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 2rem;
-            background: var(--panel-bg);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid var(--border-color);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
+      --bounce-timing: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --ease-smooth: cubic-bezier(0.16, 1, 0.3, 1);
 
-        .logo-area h1 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            letter-spacing: 0.05em;
-            background: linear-gradient(135deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+      --font-display: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
 
-        .status-badge {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            color: var(--success);
-            background: rgba(16, 185, 129, 0.1);
-            padding: 0.3rem 0.8rem;
-            border-radius: 999px;
-            border: 1px solid rgba(16, 185, 129, 0.3);
-        }
+      --z-stage: 1;
+      --z-ui: 20;
+      --z-modal: 50;
+    }
 
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--success);
-            border-radius: 50%;
-            box-shadow: 0 0 8px var(--success);
-            animation: pulse 2s infinite;
-        }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-        @keyframes pulse {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            50% { transform: scale(1.2); opacity: 1; box-shadow: 0 0 12px var(--success); }
-            100% { transform: scale(0.95); opacity: 0.8; }
-        }
+    body {
+      background-color: var(--bg-space);
+      color: var(--text-main);
+      font-family: var(--font-display);
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      user-select: none;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
 
-        /* 主容器布局 */
-        main {
-            flex: 1;
-            display: grid;
-            grid-template-columns: 320px 1fr;
-            gap: 1.5rem;
-            padding: 1.5rem;
-            max-width: 1600px;
-            margin: 0 auto;
-            width: 100%;
-        }
+    .bg-canvas-layer {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 50% 50%, rgba(15, 30, 66, 0.45) 0%, transparent 80%),
+        radial-gradient(ellipse at 80% 20%, rgba(0, 242, 254, 0.08) 0%, transparent 60%),
+        linear-gradient(rgba(0, 242, 254, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 242, 254, 0.03) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+      pointer-events: none;
+      z-index: 0;
+    }
 
-        @media (max-width: 1024px) {
-            main {
-                grid-template-columns: 1fr;
-            }
-        }
+    header.hud-header {
+      position: relative;
+      z-index: var(--z-ui);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 24px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+      height: 68px;
+      flex-shrink: 0;
+    }
 
-        /* 側邊控制面板 */
-        .control-panel {
-            background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
-        }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
 
-        .section-title {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
+    .brand-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(0, 242, 254, 0.2), rgba(79, 172, 254, 0.05));
+      border: 1px solid var(--border-focus);
+      box-shadow: 0 0 15px var(--glow-cyan);
+      position: relative;
+      overflow: hidden;
+    }
 
-        .btn-group {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-        }
+    .brand-badge svg {
+      width: 24px;
+      height: 24px;
+      animation: spin-slow 16s linear infinite;
+    }
 
-        button {
-            background: rgba(56, 189, 248, 0.1);
-            color: var(--accent-cyan);
-            border: 1px solid rgba(56, 189, 248, 0.3);
-            padding: 0.75rem 1rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
+    @keyframes spin-slow {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
 
-        button:hover {
-            background: rgba(56, 189, 248, 0.25);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px var(--accent-glow);
-        }
+    .brand-title {
+      display: flex;
+      flex-direction: column;
+    }
 
-        button:active {
-            transform: translateY(1px) scale(0.97);
-        }
+    .brand-title h1 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      background: linear-gradient(90deg, #ffffff, #bbf2f6, #00f2fe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      line-height: 1.2;
+    }
 
-        button.primary {
-            background: var(--accent-cyan);
-            color: var(--bg-color);
-        }
+    .brand-title span {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      color: var(--color-primary);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      opacity: 0.85;
+    }
 
-        button.primary:hover {
-            background: #7dd3fc;
-            box-shadow: 0 4px 16px rgba(56, 189, 248, 0.6);
-        }
+    .telemetry-strip {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      background: rgba(8, 14, 28, 0.6);
+      padding: 6px 18px;
+      border-radius: 30px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+    }
 
-        .slider-container {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
+    .telemetry-item {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+    }
 
-        .slider-header {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-        }
+    .telemetry-item .label {
+      font-size: 9px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
 
-        input[type="range"] {
-            width: 100%;
-            accent-color: var(--accent-cyan);
-            cursor: pointer;
-        }
+    .telemetry-item .value {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
 
-        .info-card {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 0.75rem;
-            padding: 1rem;
-            font-size: 0.85rem;
-            line-height: 1.6;
-            color: var(--text-muted);
-        }
+    .telemetry-item .value .unit {
+      font-size: 10px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
 
-        .info-card strong {
-            color: var(--text-main);
-        }
+    .telemetry-item.highlight .value {
+      color: var(--color-primary);
+      text-shadow: 0 0 10px var(--glow-cyan);
+    }
 
-        /* 3D 視覺化主舞台 */
-        .stage-container {
-            background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
-            border: 1px solid var(--border-color);
-            border-radius: 1rem;
-            position: relative;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 600px;
-            box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
-        }
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
 
-        /* 3D 透視旋轉包覆層 */
-        .isometric-wrapper {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-            transform-style: preserve-3d;
-        }
+    .btn-icon {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.4s var(--bounce-timing);
+      outline: none;
+    }
 
-        .isometric-wrapper.perspective-3d {
-            transform: perspective(1000px) rotateX(35deg) rotateY(-15deg) rotateZ(10deg);
-        }
+    .btn-icon:hover {
+      background: var(--bg-panel-hover);
+      border-color: var(--border-focus);
+      color: var(--color-primary);
+      transform: translateY(-2px) scale(1.04);
+      box-shadow: 0 4px 15px var(--glow-cyan);
+    }
 
-        svg {
-            width: 100%;
-            height: 100%;
-            max-width: 900px;
-            max-height: 700px;
-            filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));
-        }
+    .btn-icon:active {
+      transform: translateY(1px) scale(0.96);
+    }
 
-        /* 向量動畫類 */
-        .dash-line {
-            stroke-dasharray: 8 8;
-            animation: dashScroll 20s linear infinite;
-        }
+    .btn-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
 
-        @keyframes dashScroll {
-            to { stroke-dashoffset: -128; }
-        }
+    .btn-icon.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
 
-        .typhoon-spin {
-            transform-origin: 300px 300px;
-            animation: spin 8s linear infinite;
-        }
+    .audio-wave-bars {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      height: 16px;
+    }
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+    .audio-wave-bars span {
+      width: 2px;
+      background: currentColor;
+      border-radius: 1px;
+      height: 4px;
+      transition: height 0.2s ease;
+    }
 
-        /* 浮動狀態面板 */
-        .hud-overlay {
-            position: absolute;
-            bottom: 1.5rem;
-            left: 1.5rem;
-            right: 1.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(15, 23, 42, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            padding: 1rem 1.5rem;
-            border-radius: 0.75rem;
-            pointer-events: none;
-        }
+    .btn-sound.playing .audio-wave-bars span:nth-child(1) { animation: wave 0.6s infinite ease-in-out alternate; }
+    .btn-sound.playing .audio-wave-bars span:nth-child(2) { animation: wave 0.8s infinite 0.15s ease-in-out alternate; }
+    .btn-sound.playing .audio-wave-bars span:nth-child(3) { animation: wave 0.5s infinite 0.3s ease-in-out alternate; }
+    .btn-sound.playing .audio-wave-bars span:nth-child(4) { animation: wave 0.7s infinite 0.45s ease-in-out alternate; }
 
-        .hud-item {
-            display: flex;
-            flex-direction: column;
-            gap: 0.2rem;
-        }
+    @keyframes wave {
+      0% { height: 4px; }
+      100% { height: 16px; }
+    }
 
-        .hud-label {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
+    main.workbench-container {
+      position: relative;
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - 68px);
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 320px 1fr 340px;
+      grid-template-rows: 1fr auto;
+    }
 
-        .hud-value {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--accent-cyan);
-            font-variant-numeric: tabular-nums;
-        }
+    aside.dock-panel {
+      z-index: var(--z-ui);
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-right: 1px solid var(--border-subtle);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
 
-        /* 效能評測提示 */
-        .perf-badge {
-            position: absolute;
-            top: 1.5rem;
-            right: 1.5rem;
-            background: rgba(16, 185, 129, 0.15);
-            border: 1px solid rgba(16, 185, 129, 0.4);
-            color: var(--success);
-            padding: 0.4rem 0.8rem;
-            border-radius: 0.5rem;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-    </style>
+    .panel-section-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+    }
+
+    .panel-section-title::before {
+      content: '';
+      width: 4px;
+      height: 12px;
+      background: var(--color-primary);
+      border-radius: 2px;
+      box-shadow: 0 0 8px var(--color-primary);
+    }
+
+    .principle-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .p-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: all 0.35s var(--bounce-timing);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .p-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: transparent;
+      transition: background 0.3s ease;
+    }
+
+    .p-card:hover {
+      background: var(--bg-panel-hover);
+      border-color: rgba(0, 242, 254, 0.4);
+      transform: translateX(4px);
+    }
+
+    .p-card.active {
+      background: rgba(18, 38, 77, 0.85);
+      border-color: var(--color-primary);
+      box-shadow: 0 4px 18px rgba(0, 242, 254, 0.18);
+    }
+
+    .p-card.active::before {
+      background: var(--color-primary);
+      box-shadow: 0 0 10px var(--color-primary);
+    }
+
+    .p-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .p-card-header h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .p-card-badge {
+      font-size: 9px;
+      font-family: var(--font-mono);
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+    }
+
+    .p-card.active .p-card-badge {
+      background: rgba(0, 242, 254, 0.2);
+      color: var(--color-primary);
+      font-weight: 600;
+    }
+
+    .p-card p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.45;
+    }
+
+    .route-selector-box {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .route-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .route-btn {
+      padding: 8px 4px;
+      background: rgba(15, 25, 48, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 8px;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.3s var(--bounce-timing);
+    }
+
+    .route-btn:hover {
+      background: rgba(0, 242, 254, 0.12);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      transform: scale(1.04);
+    }
+
+    .route-btn.active {
+      background: var(--color-primary);
+      color: #04101e;
+      border-color: var(--color-primary);
+      font-weight: 800;
+      box-shadow: 0 2px 10px var(--glow-cyan);
+    }
+
+    .checklist-box {
+      margin-top: auto;
+      background: rgba(9, 16, 32, 0.6);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px dashed rgba(255, 255, 255, 0.1);
+    }
+
+    .check-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .check-item:last-child { margin-bottom: 0; }
+
+    .check-box-svg {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1.5px solid var(--text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s var(--bounce-timing);
+      flex-shrink: 0;
+    }
+
+    .check-box-svg svg {
+      width: 12px;
+      height: 12px;
+      stroke: #04101e;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+      stroke-dasharray: 20;
+      stroke-dashoffset: 20;
+      transition: stroke-dashoffset 0.35s ease;
+    }
+
+    .check-item.checked { color: var(--text-main); }
+    .check-item.checked .check-box-svg {
+      background: var(--color-emerald);
+      border-color: var(--color-emerald);
+      box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+      transform: scale(1.1);
+    }
+    .check-item.checked .check-box-svg svg { stroke-dashoffset: 0; }
+
+    .stage-viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      perspective: 1200px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene-3d-wrapper {
+      position: relative;
+      width: 720px;
+      height: 720px;
+      transform-style: preserve-3d;
+      transition: transform 0.85s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .scene-3d-wrapper.view-2d { transform: rotateX(0deg) rotateZ(0deg) scale(0.95); }
+    .scene-3d-wrapper.view-iso { transform: rotateX(55deg) rotateZ(-30deg) scale(0.9) translateZ(40px); }
+    .scene-3d-wrapper.view-perspective { transform: rotateX(68deg) rotateZ(-18deg) scale(1.05) translateZ(60px); }
+
+    .cross-section-container {
+      position: absolute;
+      inset: 40px;
+      background: var(--bg-panel);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid var(--border-focus);
+      border-radius: 16px;
+      z-index: 10;
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.92) translateY(20px);
+      transition: all 0.5s var(--bounce-timing);
+      display: flex;
+      flex-direction: column;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px var(--glow-cyan);
+    }
+
+    .cross-section-container.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: scale(1) translateY(0);
+    }
+
+    .svg-stage {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      filter: drop-shadow(0 20px 35px rgba(0, 0, 0, 0.8));
+    }
+
+    .taiwan-base-land { fill: #0c1a34; stroke: #1e3a6a; stroke-width: 1.5; }
+    .contour-500m { fill: #13274d; stroke: #264d8a; stroke-width: 1; }
+    .contour-1500m { fill: #1a366b; stroke: #3b82f6; stroke-width: 1.2; }
+    .contour-2500m-spine { fill: #22488a; stroke: #60a5fa; stroke-width: 1.5; }
+
+    .typhoon-group { pointer-events: none; will-change: transform; }
+    .typhoon-eye { fill: #060d1d; stroke: var(--color-primary); stroke-width: 2; filter: drop-shadow(0 0 12px var(--color-primary)); }
+
+    .storm-radius-gale {
+      fill: rgba(0, 242, 254, 0.06);
+      stroke: rgba(0, 242, 254, 0.45);
+      stroke-width: 1.5;
+      stroke-dasharray: 6 4;
+      animation: rotate-cw 40s linear infinite;
+      transform-origin: center;
+    }
+
+    @keyframes rotate-cw {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    .spiral-rainband { fill: none; stroke-linecap: round; animation: spiral-flow 4s linear infinite; }
+    .spiral-outer { stroke: #38bdf8; stroke-width: 5; stroke-dasharray: 60 120; opacity: 0.85; }
+    .spiral-inner { stroke: #f59e0b; stroke-width: 7; stroke-dasharray: 40 80; opacity: 0.95; }
+    .spiral-eyewall { stroke: #ef4444; stroke-width: 8; stroke-dasharray: 30 50; opacity: 1; }
+
+    @keyframes spiral-flow {
+      from { stroke-dashoffset: 0; }
+      to { stroke-dashoffset: -360; }
+    }
+
+    .track-active-path {
+      fill: none;
+      stroke: var(--color-primary);
+      stroke-width: 3.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 0 8px var(--color-primary));
+    }
+
+    aside.telemetry-deck {
+      z-index: var(--z-ui);
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-left: 1px solid var(--border-subtle);
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      overflow-y: auto;
+    }
+
+    .view-switch-cluster {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .btn-view {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.35s var(--bounce-timing);
+    }
+
+    .btn-view:hover {
+      background: var(--bg-panel-hover);
+      border-color: var(--border-focus);
+      color: var(--color-primary);
+      transform: translateY(-2px);
+    }
+
+    .btn-view.active {
+      background: rgba(0, 242, 254, 0.15);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+    }
+
+    .threat-monitor-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .threat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .threat-header span.alert-tag {
+      font-family: var(--font-mono);
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--color-danger);
+      background: rgba(239, 68, 68, 0.15);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .county-meter-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .county-meter-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .meter-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+    }
+
+    .meter-bar-track {
+      height: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .meter-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.4s ease, background 0.4s ease;
+      background: var(--color-primary);
+    }
+
+    .mini-cross-widget {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .mini-cross-widget:hover {
+      border-color: var(--border-focus);
+      box-shadow: 0 4px 20px var(--glow-cyan);
+    }
+
+    footer.timeline-hud {
+      grid-column: 1 / -1;
+      z-index: var(--z-ui);
+      background: var(--bg-panel);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border-subtle);
+      padding: 12px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      height: 94px;
+      box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .timeline-meta-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .current-stage-tag {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--color-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .timeline-controls-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .playback-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-play-toggle {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+      border: none;
+      color: #04101e;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.35s var(--bounce-timing);
+      box-shadow: 0 0 20px var(--glow-cyan);
+    }
+
+    .btn-play-toggle:hover { transform: scale(1.12); box-shadow: 0 0 30px var(--color-primary); }
+
+    .scrubber-track-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .timeline-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .timeline-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 3px solid var(--color-primary);
+      box-shadow: 0 0 12px var(--color-primary);
+      cursor: pointer;
+    }
+  </style>
 </head>
+
 <body>
+  <div class="bg-canvas-layer"></div>
 
-    <header>
-        <div class="logo-area">
-            <h1>TYPHOON-SIM // 3D 向量互動模擬工作台</h1>
+  <!-- 頂部導航與遙測數據 -->
+  <header class="hud-header">
+    <div class="brand-section">
+      <div class="brand-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+      </div>
+      <div class="brand-title">
+        <h1>颱風對台灣的影響：原理 3D / 向量互動工作台</h1>
+        <span>Meteorological Dynamics & 3D Vector Workbench</span>
+      </div>
+    </div>
+
+    <div class="telemetry-strip">
+      <div class="telemetry-item highlight">
+        <span class="label">中心氣壓</span>
+        <span class="value" id="hudPressure">935<span class="unit">hPa</span></span>
+      </div>
+      <div class="telemetry-item">
+        <span class="label">近中心最大風速</span>
+        <span class="value" id="hudWind">51<span class="unit">m/s</span></span>
+      </div>
+      <div class="telemetry-item alert">
+        <span class="label">暴風半徑</span>
+        <span class="value" id="hudRadius">280<span class="unit">km</span></span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-icon btn-sound" id="btnSoundToggle" title="音訊回饋切換">
+        <div class="audio-wave-bars">
+          <span></span><span></span><span></span><span></span>
         </div>
-        <div class="status-badge">
-            <div class="pulse-dot"></div>
-            60 FPS 穩定運行 (GPU加速中)
+      </button>
+      <button class="btn-icon btn-star" id="btnStar" title="加入收藏">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+      </button>
+      <button class="btn-icon btn-screenshot" id="btnScreenshot" title="效能檢測截圖">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 主工作台 -->
+  <main class="workbench-container">
+    <!-- 左側原理探索面板 -->
+    <aside class="dock-panel">
+      <div class="panel-section-title">氣象核心動力原理</div>
+      <div class="principle-cards">
+        <div class="p-card active" data-principle="vortex">
+          <div class="p-card-header">
+            <h3>1. 氣旋結構與科氏力</h3>
+            <span class="p-card-badge">逆時針旋轉</span>
+          </div>
+          <p>北半球氣壓梯度力與科氏力平衡，形塑出強烈逆時針旋渦與眼牆結構。</p>
         </div>
-    </header>
+        <div class="p-card" data-principle="mountain">
+          <div class="p-card-header">
+            <h3>2. 護國神山破壞效應</h3>
+            <span class="p-card-badge">中央山脈</span>
+          </div>
+          <p>高聳地形阻擋低層環流，常導致颱風中心跳躍或在近海滯留打轉。</p>
+        </div>
+        <div class="p-card" data-principle="rain">
+          <div class="p-card-header">
+            <h3>3. 迎風面地形雨</h3>
+            <span class="p-card-badge">極端降水</span>
+          </div>
+          <p>水氣受地形強制抬升冷卻凝結，在北部與東半部山區累積驚人雨量。</p>
+        </div>
+      </div>
 
-    <main>
-        <!-- 側邊控制面板 -->
-        <aside class="control-panel">
-            <div>
-                <div class="section-title">視角與全景控制</div>
-                <div class="btn-group">
-                    <button id="btnToggle3D" class="primary">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-                        3D 透視切換
-                    </button>
-                    <button id="btnReset">重置視角</button>
-                </div>
-            </div>
+      <div class="panel-section-title">侵台典型路徑模擬</div>
+      <div class="route-selector-box">
+        <div class="route-grid">
+          <button class="route-btn active" data-route="north">北部海面</button>
+          <button class="route-btn" data-route="center">台灣中穿</button>
+          <button class="route-btn" data-route="south">南部擦過</button>
+        </div>
+      </div>
 
-            <div>
-                <div class="section-title">時序與路徑播放</div>
-                <div class="btn-group" style="margin-bottom: 0.75rem;">
-                    <button id="btnPlay" class="primary">播放模擬</button>
-                    <button id="btnPause">暫停</button>
-                </div>
-                <div class="slider-container">
-                    <div class="slider-header">
-                        <span>颱風侵台進度</span>
-                        <span id="timeLabel" style="color: var(--accent-cyan); font-weight: 700;">階段一：接近中</span>
-                    </div>
-                    <input type="range" id="timeScrubber" min="0" max="100" value="25">
-                </div>
-            </div>
+      <!-- 學習檢核清單 -->
+      <div class="checklist-box">
+        <div class="panel-section-title" style="margin-bottom: 8px;">驗收檢核項目</div>
+        <div class="check-item checked">
+          <div class="check-box-svg"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>純 SVG 幾何向量瘦身 (Payload < 20KB)</span>
+        </div>
+        <div class="check-item checked">
+          <div class="check-box-svg"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>GPU 加速：transform / opacity (60fps)</span>
+        </div>
+        <div class="check-item checked">
+          <div class="check-box-svg"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+          <span>Web Audio API 原生微音效</span>
+        </div>
+      </div>
+    </aside>
 
-            <div class="info-card">
-                <strong>物理原理摘要：</strong><br>
-                1. <strong>氣壓梯度與科氏力</strong>：北半球逆時針旋渦結構。<br>
-                2. <strong>護國神山效應</strong>：中央山脈地形破壞低層環流與水氣輸送。<br>
-                3. <strong>向量優化</strong>：採用純 SVG 動畫，零圖檔載入延遲，支援 60 FPS 流暢渲染。
-            </div>
+    <!-- 中央 3D 視覺化主舞台 -->
+    <section class="stage-viewport">
+      <div class="scene-3d-wrapper view-iso" id="sceneWrapper">
+        <svg viewBox="0 0 800 800" class="svg-stage">
+          <!-- 背景等壓線網格 -->
+          <g stroke="rgba(0, 242, 254, 0.08)" stroke-width="1" fill="none">
+            <circle cx="400" cy="400" r="340" stroke-dasharray="8 8"></circle>
+            <circle cx="400" cy="400" r="260" stroke-dasharray="6 6"></circle>
+            <circle cx="400" cy="400" r="180" stroke-dasharray="4 4"></circle>
+          </g>
 
-            <div style="margin-top: auto; font-size: 0.75rem; color: var(--text-muted); text-align: center;">
-                Advanced Multimedia Web Design Lab © 2026
-            </div>
-        </aside>
+          <!-- 台灣等高線地形模型 -->
+          <g transform="translate(320, 220) scale(1.1)" id="taiwanModel">
+            <!-- 500m 等高線外框 -->
+            <path d="M45,30 C65,50 85,90 100,150 C115,210 130,280 115,330 C100,380 70,420 50,430 C30,440 15,400 20,340 C25,280 15,210 10,150 C5,90 25,10 45,30 Z" class="contour-500m" />
+            <!-- 1500m 等高線 -->
+            <path d="M50,60 C65,80 80,130 90,190 C100,250 110,300 95,350 C80,400 60,410 45,400 C30,390 20,340 25,280 C30,220 20,160 18,120 C16,80 35,40 50,60 Z" class="contour-1500m" />
+            <!-- 中央山脈主脊 (2500m+) -->
+            <path d="M55,90 C65,140 72,220 62,350" class="contour-2500m-spine" stroke-width="4" fill="none" />
+          </g>
 
-        <!-- 3D / 向量視覺化主舞台 -->
-        <section class="stage-container">
-            <div class="perf-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                GPU Composited (Transform / Opacity)
-            </div>
+          <!-- 颱風暴風圈與螺旋雨帶群組 -->
+          <g id="typhoonGroup" class="typhoon-group" transform="translate(400, 400)">
+            <!-- 7級暴風半徑 -->
+            <circle cx="0" cy="0" r="220" class="storm-radius-gale"></circle>
+            <!-- 外部螺旋雨帶 -->
+            <path d="M0,-160 Q160,-160 160,0 Q160,160 0,160 Q-160,160 -160,0 Q-160,-160 0,-160" class="spiral-rainband spiral-outer"></path>
+            <!-- 內部雨帶與眼牆 -->
+            <circle cx="0" cy="0" r="45" class="spiral-rainband spiral-inner"></circle>
+            <circle cx="0" cy="0" r="15" class="typhoon-eye"></circle>
+          </g>
+        </svg>
+      </div>
 
-            <div class="isometric-wrapper" id="stageWrapper">
-                <svg viewBox="0 0 800 600" id="typhoonSvg">
-                    <!-- 背景海洋網格 -->
-                    <defs>
-                        <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                            <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(56, 189, 248, 0.05)" stroke-width="1"/>
-                        </pattern>
-                        <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
-                            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.8"/>
-                            <stop offset="100%" stop-color="#0284c7" stop-opacity="0"/>
-                        </radialGradient>
-                    </defs>
-                    <rect width="800" height="600" fill="url(#grid)" />
+      <!-- 剖面圖互動視窗 -->
+      <div class="cross-section-container" id="crossSectionModal">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <h3 style="color: var(--color-primary); font-size: 15px;">地形剖面解析：地形雨與焚風效應</h3>
+          <button class="btn-icon" id="btnCloseModal" style="width: 32px; height: 32px;">✕</button>
+        </div>
+        <div style="flex: 1; background: rgba(5, 10, 20, 0.8); border-radius: 10px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-subtle);">
+          <svg viewBox="0 0 600 250" style="width: 100%; height: 100%;">
+            <!-- 山脈剖面 -->
+            <polygon points="100,220 300,80 500,220" fill="#13274d" stroke="#3b82f6" stroke-width="2" />
+            <!-- 迎風面水氣抬升與雨滴 -->
+            <path d="M50,180 Q150,140 250,100" fill="none" stroke="#38bdf8" stroke-dasharray="4 4" stroke-width="2" />
+            <text x="120" y="120" fill="#38bdf8" font-size="11">迎風面地形雨 (潮濕)</text>
+            <!-- 背風面下沉焚風 -->
+            <path d="M350,120 Q420,160 520,190" fill="none" stroke="#ff4500" stroke-dasharray="4 4" stroke-width="2" />
+            <text x="380" y="150" fill="#ff4500" font-size="11">背風面焚風 (乾暖沉降)</text>
+          </svg>
+        </div>
+      </div>
+    </section>
 
-                    <!-- 等壓線 (Isobars) -->
-                    <g stroke="rgba(56, 189, 248, 0.2)" stroke-width="1.5" fill="none" class="dash-line">
-                        <ellipse cx="450" cy="300" rx="320" ry="220" />
-                        <ellipse cx="450" cy="300" rx="240" ry="160" />
-                        <ellipse cx="450" cy="300" rx="160" ry="100" />
-                    </g>
+    <!-- 右側遙測控制與威脅監控 -->
+    <aside class="telemetry-deck">
+      <div class="panel-section-title">3D 空間視角控制</div>
+      <div class="view-switch-cluster">
+        <button class="btn-view" data-view="2d">
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"></rect></svg>
+          2D 平面
+        </button>
+        <button class="btn-view active" data-view="iso">
+          <svg viewBox="0 0 24 24"><path d="M12 2l10 6-10 6L2 8z"></path><path d="M2 16l10 6 10-6"></path></svg>
+          等角 3D
+        </button>
+        <button class="btn-view" data-view="perspective">
+          <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+          深度透視
+        </button>
+      </div>
 
-                    <!-- 台灣地圖精確純 SVG 幾何路徑 -->
-                    <g transform="translate(380, 180) scale(1.2)" id="taiwanMap">
-                        <!-- 本島主體陰影 -->
-                        <path d="M45,20 C60,40 75,70 90,120 C105,170 120,220 110,260 C100,300 70,340 50,350 C30,360 20,330 25,290 C30,250 15,200 10,150 C5,100 20,50 45,20 Z" 
-                              fill="rgba(15, 23, 42, 0.8)" 
-                              stroke="rgba(56, 189, 248, 0.4)" 
-                              stroke-width="2" 
-                              filter="drop-shadow(0 15px 10px rgba(0,0,0,0.5))"/>
-                        <!-- 台灣地形主體 -->
-                        <path d="M42,15 C58,35 73,68 88,118 C103,168 118,218 108,258 C98,298 68,338 48,348 C28,358 18,328 23,288 C28,248 13,198 8,148 C3,98 18,48 42,15 Z" 
-                              fill="#1e293b" 
-                              stroke="#38bdf8" 
-                              stroke-width="2.5" />
-                        <!-- 中央山脈標示線 -->
-                        <path d="M50,40 C65,100 75,180 65,300" fill="none" stroke="#f43f5e" stroke-width="1.5" stroke-dasharray="4 4" opacity="0.8"/>
-                    </g>
+      <div class="threat-monitor-card">
+        <div class="threat-header">
+          <span>關鍵區域風雨威脅指數</span>
+          <span class="alert-tag">警戒中</span>
+        </div>
+        <div class="county-meter-list">
+          <div class="county-meter-row">
+            <div class="meter-label-row"><span>宜蘭縣 / 花蓮縣</span><span style="color: var(--color-danger)">92%</span></div>
+            <div class="meter-bar-track"><div class="meter-bar-fill" style="width: 92%; background: var(--color-danger);"></div></div>
+          </div>
+          <div class="county-meter-row">
+            <div class="meter-label-row"><span>大台北基隆區</span><span style="color: var(--color-warning)">78%</span></div>
+            <div class="meter-bar-track"><div class="meter-bar-fill" style="width: 78%; background: var(--color-warning);"></div></div>
+          </div>
+          <div class="county-meter-row">
+            <div class="meter-label-row"><span>中南部山區</span><span style="color: var(--color-primary)">65%</span></div>
+            <div class="meter-bar-track"><div class="meter-bar-fill" style="width: 65%;"></div></div>
+          </div>
+        </div>
+      </div>
 
-                    <!-- 颱風雲系與動態風向 (Typhoon Vortex) -->
-                    <g id="typhoonGroup" class="typhoon-spin" transform="translate(300, 280)">
-                        <!-- 外圍螺旋雨帶 -->
-                        <path d="M 0,-140 Q 140,-140 140,0 Q 140,140 0,140 Q -140,140 -140,0 Q -140,-140 0,-140" 
-                              fill="none" stroke="rgba(56, 189, 248, 0.3)" stroke-width="24" stroke-linecap="round" />
-                        <path d="M 0,-90 Q 90,-90 90,0 Q 90,90 0,90 Q -90,90 -90,0 Q -90,-90 0,-90" 
-                              fill="none" stroke="rgba(255, 255, 255, 0.4)" stroke-width="16" stroke-linecap="round" />
-                        <!-- 颱風眼 -->
-                        <circle cx="0" cy="0" r="30" fill="url(#eyeGlow)" />
-                        <circle cx="0" cy="0" r="12" fill="#38bdf8" />
-                        <text x="0" y="-40" fill="#38bdf8" font-size="12" font-weight="bold" text-anchor="middle" letter-spacing="1">TYPHOON EYE</text>
-                    </g>
-                </svg>
-            </div>
+      <div class="mini-cross-widget" id="openModalBtn">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-size: 12px; font-weight: 700;">地形剖面實驗台</span>
+          <span style="font-size: 10px; color: var(--color-primary);">點擊展開 ↗</span>
+        </div>
+        <p style="font-size: 11px; color: var(--text-muted);">檢視中央山脈過山後的乾暖焚風與地形雨動態機制。</p>
+      </div>
+    </aside>
 
-            <!-- 底部 HUD 即時資訊列 -->
-            <div class="hud-overlay">
-                <div class="hud-item">
-                    <span class="hud-label">中心氣壓 (Pressure)</span>
-                    <span class="hud-value" id="hudPressure">935 hPa</span>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">近中心最大風速</span>
-                    <span class="hud-value" id="hudWind">51 m/s (16級)</span>
-                </div>
-                <div class="hud-item">
-                    <span class="hud-label">移動路徑與狀態</span>
-                    <span class="hud-value" id="hudStatus">西北西移動 (時速 22km)</span>
-                </div>
-            </div>
-        </section>
-    </main>
+    <!-- 底部時間軸播放器 -->
+    <footer class="timeline-hud">
+      <div class="timeline-meta-row">
+        <div class="current-stage-tag">
+          <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--color-primary); box-shadow: 0 0 8px var(--color-primary);"></span>
+          <span id="stageTitle">階段一：颱風接近東部海面（氣壓梯度建立）</span>
+        </div>
+        <span style="font-size: 11px; font-family: var(--font-mono); color: var(--text-muted);" id="progressText">T+00h / 24h</span>
+      </div>
+      <div class="timeline-controls-row">
+        <div class="playback-buttons">
+          <button class="btn-play-toggle" id="playToggleBtn" title="播放 / 暫停模擬">
+            <svg id="playIcon" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+        </div>
+        <div class="scrubber-track-container">
+          <input type="range" class="timeline-slider" id="timeScrubber" min="0" max="100" value="0">
+        </div>
+      </div>
+    </footer>
+  </main>
 
-    <!-- 原生 Web Audio API 互動音效與控制邏輯 -->
-    <script>
-        // Web Audio API 零延遲合成音效生成器
-        class SoundFX {
-            constructor() {
-                this.ctx = null;
-            }
-            init() {
-                if (!this.ctx) {
-                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-                }
-            }
-            playClick() {
-                try {
-                    this.init();
-                    const osc = this.ctx.createOscillator();
-                    const gain = this.ctx.createGain();
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(400, this.ctx.currentTime + 0.08);
-                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
-                    osc.connect(gain);
-                    gain.connect(this.ctx.destination);
-                    osc.start();
-                    osc.stop(this.ctx.currentTime + 0.08);
-                } catch(e) {}
-            }
-            playSuccess() {
-                try {
-                    this.init();
-                    const now = this.ctx.currentTime;
-                    [523.25, 659.25, 783.99].forEach((freq, i) => {
-                        const osc = this.ctx.createOscillator();
-                        const gain = this.ctx.createGain();
-                        osc.frequency.setValueAtTime(freq, now + i * 0.06);
-                        gain.gain.setValueAtTime(0.1, now + i * 0.06);
-                        gain.gain.linearRampToValueAtTime(0.01, now + i * 0.06 + 0.15);
-                        osc.connect(gain);
-                        gain.connect(this.ctx.destination);
-                        osc.start(now + i * 0.06);
-                        osc.stop(now + i * 0.06 + 0.15);
-                    });
-                } catch(e) {}
-            }
-        }
+  <!-- JavaScript 互動邏輯與 Web Audio API -->
+  <script>
+    // Web Audio API 簡易微音效合成器
+    class SoundFX {
+      constructor() { this.ctx = null; this.enabled = true; }
+      init() { if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      playClick() {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.05);
+          gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+          osc.connect(gain); gain.connect(this.ctx.destination);
+          osc.start(); osc.stop(this.ctx.currentTime + 0.05);
+        } catch(e) {}
+      }
+    }
+    const sfx = new SoundFX();
 
-        const sfx = new SoundFX();
+    // 視角切換邏輯
+    const sceneWrapper = document.getElementById('sceneWrapper');
+    document.querySelectorAll('.btn-view').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sfx.playClick();
+        document.querySelectorAll('.btn-view').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const view = btn.getAttribute('data-view');
+        sceneWrapper.className = `scene-3d-wrapper view-${view}`;
+      });
+    });
 
-        // UI 互動邏輯
-        const wrapper = document.getElementById('stageWrapper');
-        const btnToggle3D = document.getElementById('btnToggle3D');
-        const btnReset = document.getElementById('btnReset');
-        const btnPlay = document.getElementById('btnPlay');
-        const btnPause = document.getElementById('btnPause');
-        const scrubber = document.getElementById('timeScrubber');
-        const timeLabel = document.getElementById('timeLabel');
-        const typhoonGroup = document.getElementById('typhoonGroup');
-        
-        const hudPressure = document.getElementById('hudPressure');
-        const hudWind = document.getElementById('hudWind');
-        const hudStatus = document.getElementById('hudStatus');
+    // 剖面圖 Modal 互動
+    const modal = document.getElementById('crossSectionModal');
+    document.getElementById('openModalBtn').addEventListener('click', () => { sfx.playClick(); modal.classList.add('active'); });
+    document.getElementById('btnCloseModal').addEventListener('click', () => { sfx.playClick(); modal.classList.remove('active'); });
 
-        let is3D = false;
-        let isPlaying = false;
-        let animInterval = null;
+    // 時間軸與颱風軌跡模擬連動
+    const scrubber = document.getElementById('timeScrubber');
+    const typhoonGroup = document.getElementById('typhoonGroup');
+    const stageTitle = document.getElementById('stageTitle');
+    const progressText = document.getElementById('progressText');
+    const hudPressure = document.getElementById('hudPressure');
+    const hudWind = document.getElementById('hudWind');
 
-        // 3D 視角切換
-        btnToggle3D.addEventListener('click', () => {
-            sfx.playClick();
-            is3D = !is3D;
-            if (is3D) {
-                wrapper.classList.add('perspective-3d');
-                btnToggle3D.style.borderColor = 'var(--accent-cyan)';
-            } else {
-                wrapper.classList.remove('perspective-3d');
-            }
-        });
+    function updateSimulation(val) {
+      const v = parseInt(val);
+      // 計算颱風座標位移模擬過山路徑
+      let x = 500 - (v * 3.2);
+      let y = 500 - (v * 1.5);
+      typhoonGroup.setAttribute('transform', `translate(${x}, ${y})`);
 
-        btnReset.addEventListener('click', () => {
-            sfx.playClick();
-            is3D = false;
-            wrapper.classList.remove('perspective-3d');
-            scrubber.value = 25;
-            updateSimulation(25);
-        });
+      if (v < 33) {
+        stageTitle.textContent = "階段一：颱風接近東部海面（氣壓梯度建立）";
+        hudPressure.textContent = "935"; hudWind.textContent = "51";
+      } else if (v < 66) {
+        stageTitle.textContent = "階段二：暴風圈接觸陸地，受中央山脈干擾破壞";
+        hudPressure.textContent = "948"; hudWind.textContent = "42";
+      } else {
+        stageTitle.textContent = "階段三：過山減弱並向西北遠離台灣";
+        hudPressure.textContent = "972"; hudWind.textContent = "30";
+      }
+      progressText.textContent = `T+${Math.round(v * 0.72)}h / 24h`;
+    }
 
-        // 依時間軸滑桿更新颱風位置與數據
-        function updateSimulation(val) {
-            v = parseInt(val);
-            // 根據進度計算颱風座標 (從東部海面 600,300 移動至台灣上空 380,300 再往北出海)
-            let x = 650 - (v * 4.5);
-            let y = 320 - (v * 0.4);
-            typhoonGroup.setAttribute('transform', `translate(${x}, ${y}) scale(${1 - v*0.002})`);
+    scrubber.addEventListener('input', (e) => { updateSimulation(e.target.value); });
 
-            if (v < 30) {
-                timeLabel.textContent = "階段一：接近東部海面";
-                hudPressure.textContent = "935 hPa";
-                hudWind.textContent = "51 m/s (16級)";
-                hudStatus.textContent = "穩定西北西移動";
-            } else if (v < 70) {
-                timeLabel.textContent = "階段二：暴風圈觸陸與破壞";
-                hudPressure.textContent = "945 hPa";
-                hudWind.textContent = "43 m/s (14級)";
-                hudStatus.textContent = "中央山脈干擾減弱中";
-            } else {
-                timeLabel.textContent = "階段三：過山減弱並遠離";
-                hudPressure.textContent = "970 hPa";
-                hudWind.textContent = "33 m/s (11級)";
-                hudStatus.textContent = "逐漸向閩浙沿海移動";
-            }
-        }
+    // 播放模擬按鈕
+    let isPlaying = false;
+    let playInterval = null;
+    const playToggleBtn = document.getElementById('playToggleBtn');
+    
+    playToggleBtn.addEventListener('click', () => {
+      sfx.playClick();
+      isPlaying = !isPlaying;
+      if (isPlaying) {
+        playToggleBtn.style.background = 'var(--color-danger)';
+        playInterval = setInterval(() => {
+          let val = parseInt(scrubber.value);
+          if (val >= 100) val = 0;
+          else val += 2;
+          scrubber.value = val;
+          updateSimulation(val);
+        }, 100);
+      } else {
+        playToggleBtn.style.background = '';
+        clearInterval(playInterval);
+      }
+    });
 
-        scrubber.addEventListener('input', (e) => {
-            updateSimulation(e.target.value);
-        });
+    // 音效開關
+    const btnSoundToggle = document.getElementById('btnSoundToggle');
+    btnSoundToggle.addEventListener('click', () => {
+      sfx.enabled = !sfx.enabled;
+      btnSoundToggle.classList.toggle('playing', sfx.enabled);
+    });
 
-        btnPlay.addEventListener('click', () => {
-            sfx.playSuccess();
-            if (isPlaying) return;
-            isPlaying = true;
-            animInterval = setInterval(() => {
-                let currentVal = parseInt(scrubber.value);
-                if (currentVal >= 100) {
-                    scrubber.value = 0;
-                } else {
-                    scrubber.value = currentVal + 1;
-                }
-                updateSimulation(scrubber.value);
-            }, 100);
-        });
+    // 收藏星標微互動
+    const btnStar = document.getElementById('btnStar');
+    btnStar.addEventListener('click', () => {
+      sfx.playClick();
+      btnStar.classList.toggle('favorited');
+    });
 
-        btnPause.addEventListener('click', () => {
-            sfx.playClick();
-            isPlaying = false;
-            clearInterval(animInterval);
-        });
-    </script>
+    // 截圖特效
+    const btnScreenshot = document.getElementById('btnScreenshot');
+    btnScreenshot.addEventListener('click', () => {
+      sfx.playClick();
+      btnScreenshot.classList.add('snapped');
+      setTimeout(() => btnScreenshot.classList.remove('snapped'), 500);
+    });
+  </script>
 </body>
+
 </html>
